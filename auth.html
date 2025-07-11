@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Contoso OAuth</title>
+    <script src="https://alcdn.msauth.net/browser/2.29.0/js/msal-browser.min.js"></script>
+    <script>
+      const msalConfig = {
+        auth: {
+          clientId: "<YOUR-CLIENT-ID>",
+          authority: "https://login.microsoftonline.com/<YOUR-TENANT-ID>",
+          redirectUri: window.location.origin + "/auth.html"
+        }
+      };
+      const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+      // On load, handle redirect or prompt sign-in
+      window.onload = () => {
+        msalInstance.handleRedirectPromise().then((resp) => {
+          if (resp && resp.accessToken) {
+            // Send token back to parent dialog
+            window.opener.postMessage(
+              { accessToken: resp.accessToken },
+              window.location.origin
+            );
+            window.close();
+          } else {
+            document.getElementById("signin").style.display = "block";
+          }
+        });
+      };
+
+      function signIn() {
+        msalInstance.loginRedirect({
+          scopes: ["api://<YOUR-CLIENT-ID>/access_as_user"]
+        });
+      }
+    </script>
+  </head>
+  <body style="font-family:Segoe UI,sans-serif; text-align:center; padding:2rem;">
+    <h2>Contoso API Sign-In</h2>
+    <button id="signin" style="font-size:1rem; padding:0.5rem 1rem;" onclick="signIn()">
+      Sign In
+    </button>
+  </body>
+</html>
