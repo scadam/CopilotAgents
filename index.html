@@ -1,44 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>CopilotAgents OAuth</title>
-  <style>
-    body { font-family: "Segoe UI", sans-serif; text-align: center; padding: 2rem; }
-    button { font-size: 1rem; padding: 0.5rem 1rem; }
-  </style>
-</head>
+<html>
+<head><meta charset="utf-8"/><title>Copilot Sign-In</title></head>
 <body>
-  <h1>CopilotAgents Sign-In</h1>
   <button id="signin">Sign In</button>
-
-  <!-- Teams JS SDK -->
   <script src="https://statics.teams.cdn.office.net/sdk/v2.0.0/js/MicrosoftTeams.min.js"></script>
   <script>
-    const { authentication, app } = microsoftTeams;
-
-    document.getElementById("signin").onclick = async () => {
+    const { authentication } = microsoftTeams;
+    document.getElementById('signin').onclick = async () => {
       try {
-        const resultKey = await authentication.authenticate({
-          url: window.location.origin + "/auth/simple-start",
-          width: 600,
-          height: 535
+        const key = await authentication.authenticate({
+          url: window.location.origin + '/auth/simple-start',
+          width: 600, height: 535
         });
-
-        console.log("Login succeeded, key:", resultKey);
-        const data = localStorage.getItem(resultKey);
-        localStorage.removeItem(resultKey);
-
-        const tokenResult = JSON.parse(data);
-        // Now you have idToken & accessToken
-        console.log("ID Token:", tokenResult.idToken);
-        console.log("Access Token:", tokenResult.accessToken);
-
-        // TODO: post token back to your agent server or Copilot host
-      }
-      catch (reason) {
-        console.error("Login failed:", reason);
-        // TODO: surface error to the user or agent
+        const data = JSON.parse(localStorage.getItem(key));
+        localStorage.removeItem(key);
+        console.log('Tokens:', data);
+        // send data.accessToken back to your agent…
+      } catch (e) {
+        console.error('Auth failed:', e);
       }
     };
   </script>
