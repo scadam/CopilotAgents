@@ -1,29 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Contoso Static OAuth</title>
+  <meta charset="utf-8" />
+  <title>CopilotAgents OAuth</title>
   <style>
     body { font-family: "Segoe UI", sans-serif; text-align: center; padding: 2rem; }
-    #welcome { margin-top: 1rem; font-size: 1.2rem; }
+    button { font-size: 1rem; padding: 0.5rem 1rem; }
   </style>
 </head>
 <body>
-  <h1>Contoso Static Web App</h1>
-  <div id="welcome">Checking sign-in status…</div>
+  <h1>CopilotAgents Sign-In</h1>
+  <button id="signin">Sign In</button>
+
+  <!-- Teams JS SDK -->
+  <script src="https://statics.teams.cdn.office.net/sdk/v2.0.0/js/MicrosoftTeams.min.js"></script>
   <script>
-    async function checkLogin() {
-      const res = await fetch('/.auth/me');
-      const json = await res.json();
-      if (json.clientPrincipal) {
-        document.getElementById('welcome').innerText =
-          'Welcome, ' + json.clientPrincipal.userDetails + '!';
-      } else {
-        // Silent redirect into Azure Static Web Apps
-        location.href = '/.auth/login/aad?post_login_redirect_uri=' + encodeURIComponent(location.href);
+    const { authentication, app } = microsoftTeams;
+
+    document.getElementById("signin").onclick = async () => {
+      try {
+        const resultKey = await authentication.authenticate({
+          url: window.location.origin + "/auth/simple-start",
+          width: 600,
+          height: 535
+        });
+
+        console.log("Login succeeded, key:", resultKey);
+        const data = localStorage.getItem(resultKey);
+        localStorage.removeItem(resultKey);
+
+        const tokenResult = JSON.parse(data);
+        // Now you have idToken & accessToken
+        console.log("ID Token:", tokenResult.idToken);
+        console.log("Access Token:", tokenResult.accessToken);
+
+        // TODO: post token back to your agent server or Copilot host
       }
-    }
-    checkLogin();
+      catch (reason) {
+        console.error("Login failed:", reason);
+        // TODO: surface error to the user or agent
+      }
+    };
   </script>
 </body>
 </html>
