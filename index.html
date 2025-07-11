@@ -1,46 +1,29 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Contoso OAuth</title>
-    <script src="https://alcdn.msauth.net/browser/2.29.0/js/msal-browser.min.js"></script>
-    <script>
-      const msalConfig = {
-        auth: {
-          clientId: "<YOUR-CLIENT-ID>",
-          authority: "https://login.microsoftonline.com/<YOUR-TENANT-ID>",
-          redirectUri: window.location.origin + "/index.html"
-        }
-      };
-      const msalInstance = new msal.PublicClientApplication(msalConfig);
-
-      // On load, handle redirect or prompt sign-in
-      window.onload = () => {
-        msalInstance.handleRedirectPromise().then((resp) => {
-          if (resp && resp.accessToken) {
-            // Send token back to parent dialog
-            window.opener.postMessage(
-              { accessToken: resp.accessToken },
-              window.location.origin
-            );
-            window.close();
-          } else {
-            document.getElementById("signin").style.display = "block";
-          }
-        });
-      };
-
-      function signIn() {
-        msalInstance.loginRedirect({
-          scopes: ["api://<YOUR-CLIENT-ID>/access_as_user"]
-        });
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Contoso Static OAuth</title>
+  <style>
+    body { font-family: "Segoe UI", sans-serif; text-align: center; padding: 2rem; }
+    #welcome { margin-top: 1rem; font-size: 1.2rem; }
+  </style>
+</head>
+<body>
+  <h1>Contoso Static Web App</h1>
+  <div id="welcome">Checking sign-in status…</div>
+  <script>
+    async function checkLogin() {
+      const res = await fetch('/.auth/me');
+      const json = await res.json();
+      if (json.clientPrincipal) {
+        document.getElementById('welcome').innerText =
+          'Welcome, ' + json.clientPrincipal.userDetails + '!';
+      } else {
+        // Silent redirect into Azure Static Web Apps
+        location.href = '/.auth/login/aad?post_login_redirect_uri=' + encodeURIComponent(location.href);
       }
-    </script>
-  </head>
-  <body style="font-family:Segoe UI,sans-serif; text-align:center; padding:2rem;">
-    <h2>Contoso API Sign-In</h2>
-    <button id="signin" style="font-size:1rem; padding:0.5rem 1rem;" onclick="signIn()">
-      Sign In
-    </button>
-  </body>
+    }
+    checkLogin();
+  </script>
+</body>
 </html>
