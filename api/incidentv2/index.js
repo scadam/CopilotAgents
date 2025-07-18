@@ -1,11 +1,9 @@
+const fetch = require("node-fetch");
+
 module.exports = async function (context, req) {
   try {
     context.log("Incidentv2 function triggered");
-    context.log("Request method:", req.method);
-    context.log("Query params:", req.query);
-
     const sysId = req.query.sys_id || (req.body && req.body.sys_id);
-    context.log("Resolved sysId:", sysId);
 
     if (!sysId) {
       context.res = {
@@ -15,28 +13,45 @@ module.exports = async function (context, req) {
       return;
     }
 
+    // 🔐 ServiceNow API config
+    const SN_INSTANCE = "dev217950.service-now.com";
+    const SN_TABLE_API = `https://${SN_INSTANCE}/api/now/table/incident`;
+    const SN_USER = "admin";
+    const SN_PASS = "mIEh6jpTT9*="; // Store securely for production
+    const authHeader = Buffer.from(`${SN_USER}:${SN_PASS}`).toString("base64");
+
     if (req.method === "GET") {
-      context.res = {
-        status: 200,
-        body: {
-          result: {
-            number: "INC9999999",
-            short_description: "Mock incident loaded successfully",
-            state: "In Progress",
-            sysId
-          }
+      const response = await fetch(`${SN_TABLE_API}/${sysId}`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Basic ${authHeader}`
         }
+      });
+
+      const data = await response.json();
+      context.res = {
+        status: response.status,
+        body: data
       };
     } else if (req.method === "POST") {
-      context.log("Request body:", req.body);
+      const payload = { ...req.body };
+      delete payload.sys_id;
+
+      const response = await fetch(`${SN_TABLE_API}/${sysId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Basic ${authHeader}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
       context.res = {
-        status: 200,
-        body: {
-          result: {
-            message: `Incident ${sysId} updated successfully`,
-            updated: req.body
-          }
-        }
+        status: response.status,
+        body: data
       };
     } else {
       context.res = {
@@ -45,7 +60,7 @@ module.exports = async function (context, req) {
       };
     }
   } catch (err) {
-    context.log.error("Unhandled exception:", err);
+    context.log.error("ServiceNow call failed:", err);
     context.res = {
       status: 500,
       body: { error: "Server error", detail: err.message }
