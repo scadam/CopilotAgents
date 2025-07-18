@@ -1,102 +1,65 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>ServiceNow Incident Editor</title>
-  <!-- Teams SDK for SSO: -->
-  https://statics.teams.cdn.office.net/sdk/v2.0.0/js/sdk.min.js
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    h2 { color: #0078D4; }  /* Blue header */
-    label { font-weight: bold; margin-top: 10px; display: block; }
-    input, textarea { width: 100%; padding: 5px; margin-bottom: 10px; }
-    #loading { color: gray; font-style: italic; }
-    #result { margin-top: 15px; font-weight: bold; }
-    #result.error { color: red; }
-  </style>
-</head>
-<body>
-  <h2>Edit ServiceNow Incident</h2>
-  <div id="loading">Loading incident details...</div>
-  
-  <form id="incidentForm" style="display:none;">
-    <label>Number:
-      <input id="number" type="text" disabled />
-    </label>
-    <label>Short Description:
-      <textarea id="short_description"></textarea>
-    </label>
-    <label>State:
-      <input id="state" type="text" />
-    </label>
-    <!-- Additional fields can be added here -->
-    <button type="button" id="saveBtn">💾 Save Changes</button>
-  </form>
-  
-  <div id="result"></div>
-  
-  <script>
-    // Initialize Microsoft Teams SDK (required for authentication to work)
-    microsoftTeams.initialize();
+<script>
+  // Initialize Teams SDK
+  microsoftTeams.initialize();
 
-    // Get the 'sys_id' from URL query parameters
-    const params = new URLSearchParams(window.location.search);
-    const sysId = params.get('sys_id');
-    if (!sysId) {
-      document.getElementById('loading').innerText = "Error: No incident id provided.";
-      throw new Error("No sys_id parameter");
-    }
+  // 1. Parse sys_id from URL
+  const params = new URLSearchParams(window.location.search);
+  const sysId = params.get('sys_id');
+  if (!sysId) {
+    document.getElementById('loading').innerText = "Error: No incident id provided.";
+  }
 
-    // 1. Get Azure AD token silently via Teams SSO
-    microsoftTeams.authentication.getAuthToken().then(async (aadToken) => {
-      console.log("Got Azure AD token.");
-      // 2. Use the token to call backend API and get incident details
+  // 2. Get Azure AD SSO token silently
+  microsoftTeams.authentication.getAuthToken().then(async (token) => {
+      console.log("Got Teams token:", token);
+      // 3. Call backend to get incident details
       const resp = await fetch(`/api/incident?sys_id=${sysId}`, {
-        headers: { 'Authorization': `Bearer ${aadToken}` }
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!resp.ok) throw new Error("Incident fetch failed: " + resp.status);
+      if (!resp.ok) {
+        document.getElementById('loading').innerText = "Failed to load incident.";
+        return;
+      }
       const data = await resp.json();
-      // 3. Populate form with incident data
-      document.getElementById('number').value = data.result.number || "";
-      document.getElementById('short_description').value = data.result.short_description || "";
-      document.getElementById('state').value = data.result.state || "";
-      // Show the form, hide the loading text
+      console.log("Incident data:", data);
+      // 4. Populate form fields
+      document.getElementById('number').value = data.result.number;
+      document.getElementById('short_description').value = data.result.short_description;
+      document.getElementById('state').value = data.result.state;
+      // ... populate other fields ...
       document.getElementById('loading').style.display = 'none';
       document.getElementById('incidentForm').style.display = 'block';
-    }).catch(err => {
-      console.error("SSO getAuthToken failed", err);
-      document.getElementById('loading').innerText = "Authentication error. Please sign in.";
-      // In case of error, you might handle interactive auth here, but for demo we assume SSO works.
+    })
+    .catch(err => {
+      console.error("Error getting auth token:", err);
+      document.getElementById('loading').innerText = "Authentication error. Please ensure SSO is configured.";
     });
 
-    // Save button handler - send updates to backend
-    document.getElementById('saveBtn').onclick = async () => {
-      const resultDiv = document.getElementById('result');
-      resultDiv.classList.remove('error');
-      resultDiv.innerText = "Saving...";
-      const updatePayload = {
-        sys_id: sysId,
-        short_description: document.getElementById('short_description').value,
-        state: document.getElementById('state').value
-      };
-      try {
-        const aadToken = await microsoftTeams.authentication.getAuthToken();
-        const response = await fetch(`/api/incident`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${aadToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(updatePayload)
-        });
-        if (!response.ok) throw new Error("Update failed: " + response.status);
-        resultDiv.innerText = "✅ Incident updated successfully.";
-      } catch (error) {
-        console.error(error);
-        resultDiv.classList.add('error');
-        resultDiv.innerText = "Failed to update incident.";
-      }
+  // 5. Save button handler
+  document.getElementById('saveBtn').onclick = async () => {
+    document.getElementById('result').innerText = ""; // clear old result
+    // Gather edited values
+    const updated = {
+      sys_id: sysId,
+      short_description: document.getElementById('short_description').value,
+      state: document.getElementById('state').value
+      // ... any other updatable fields ...
     };
-  </script>
-</body>
-</html>
+    // Get token (still cached, getAuthToken will reuse cached token until expiration[1](https://learn.microsoft.com/en-us/microsoft-365-copilot/extensibility/adaptive-card-dialog-box))
+    try {
+      const token = await microsoftTeams.authentication.getAuthToken();
+      const resp = await fetch(`/api/incident`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      });
+      if (!resp.ok) throw new Error(resp.statusText);
+      document.getElementById('result').innerText = "✅ Incident updated successfully in ServiceNow.";
+    } catch (error) {
+      console.error("Update failed:", error);
+      document.getElementById('result').style.color = 'red';
+      document.getElementById('result').innerText = "Failed to update incident.";
+    }
+  };
+</script>
