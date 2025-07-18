@@ -21,7 +21,7 @@ module.exports = async function (context, req) {
   //}
 
   // 2. Call ServiceNow API
-  const SN_INSTANCE = "dev217950.service-now.com.service-now.com";
+  const SN_INSTANCE = "dev217950.service-now.com";
   const SN_TABLE_API = `https://${SN_INSTANCE}/api/now/table/incident`;
   const SN_USER = "admin";
   const SN_PASS = "mIEh6jpTT9*="; // (Alternatively use OAuth client credentials)

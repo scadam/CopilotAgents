@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>ServiceNow Incident Editor</title>
-  https://statics.teams.cdn.office.net/sdk/v2.0.0/js/sdk.min.js
+  <script src="https://statics.teams.cdn.office.net/sdk/v2.0.0/js/sdk.min.js"></script>
   <style>
     body { font-family: sans-serif; margin: 20px; }
     h2 { color: #0078D4; }
@@ -18,10 +18,10 @@
 <body>
   <h2>Edit ServiceNow Incident</h2>
   <div id="loading">Loading incident details...</div>
-  <form id="incidentForm" style="display:none;">
+  <form id="incidentForm" style="display:block">
     <label>Number: <input id="number" type="text" disabled /></label>
     <label>Short Description: <textarea id="short_description"></textarea></label>
-    <label>State:<input id="state" type="text" /></label>>
+    <label>State:<input id="state" type="text" /></label>
     <button type="button" id="saveBtn">💾 Save Changes</button>
   </form>
   <div id="result"></div>
