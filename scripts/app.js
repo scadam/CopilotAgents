@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
   microsoftTeams.authentication.getAuthToken({
     successCallback: async (aadToken) => {
       try {
-        const res = await fetch(`/api/incident?sys_id=${sysId}`, {
+        const res = await fetch(`/api/incidentv2?sys_id=${sysId}`, {
           headers: { Authorization: `Bearer ${aadToken}` }
         });
         if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
@@ -58,7 +58,7 @@ document.addEventListener("DOMContentLoaded", () => {
         })
       );
 
-      const resp = await fetch("/api/incident", {
+      const resp = await fetch("/api/incidentv2", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${aadToken}`,
