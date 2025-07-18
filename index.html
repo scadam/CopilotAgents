@@ -18,74 +18,96 @@
 <body>
   <h2>Edit ServiceNow Incident</h2>
   <div id="loading">Loading incident details...</div>
-  <form id="incidentForm" style="display:block">
+  <form id="incidentForm" style="display:none">
     <label>Number: <input id="number" type="text" disabled /></label>
     <label>Short Description: <textarea id="short_description"></textarea></label>
-    <label>State:<input id="state" type="text" /></label>
+    <label>State: <input id="state" type="text" /></label>
     <button type="button" id="saveBtn">💾 Save Changes</button>
   </form>
   <div id="result"></div>
 
   <script>
-    microsoftTeams.initialize();  // Initialize Teams SDK
-
-    // 1. Parse incident ID from URL
-    const params = new URLSearchParams(window.location.search);
-    const sysId = params.get('sys_id');
-    if (!sysId) {
-      document.getElementById('loading').innerText = "Error: no incident id.";
-      throw new Error("sys_id parameter is missing");
-    }
-
-    // 2. Get Azure AD SSO token silently
-    microsoftTeams.authentication.getAuthToken().then(async (aadToken) => {
-      console.log("Got Azure AD token");
-      // 3. Fetch incident details from backend, with token
-      const res = await fetch(`/api/incident?sys_id=${sysId}`, {
-        headers: { 'Authorization': `Bearer ${aadToken}` }
-      });
-      if (!res.ok) throw new Error("Incident fetch failed: " + res.status);
-      const data = await res.json();
-      // 4. Populate form fields
-      document.getElementById('number').value = data.result.number || "";
-      document.getElementById('short_description').value = data.result.short_description || "";
-      document.getElementById('state').value = data.result.state || "";
-      // Show form, hide loading
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('incidentForm').style.display = 'block';
-    }).catch(err => {
-      console.error("SSO token error:", err);
-      document.getElementById('loading').innerText = "Authentication error or consent required.";
-      // In a real app, you might handle interactive auth here if SSO fails.
-    });
-
-    // 5. Save changes handler
-    document.getElementById('saveBtn').onclick = async () => {
-      const resultDiv = document.getElementById('result');
-      resultDiv.innerText = "Saving...";
-      resultDiv.classList.remove('error');
-      const updated = {
-        sys_id: sysId,
-        short_description: document.getElementById('short_description').value,
-        state: document.getElementById('state').value
-      };
-      try {
-        const aadToken = await microsoftTeams.authentication.getAuthToken();
-        const resp = await fetch('/api/incident', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${aadToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(updated)
-        });
-        if (!resp.ok) throw new Error("Update failed: " + resp.status);
-        resultDiv.innerText = "✅ Incident updated successfully.";
-      } catch (err) {
-        console.error("Error saving incident:", err);
-        resultDiv.classList.add('error');
-        resultDiv.innerText = "Failed to update incident.";
+    document.addEventListener("DOMContentLoaded", () => {
+      if (typeof microsoftTeams === "undefined") {
+        document.getElementById('loading').innerText = "Error: Teams SDK not loaded.";
+        return;
       }
-    };
+
+      microsoftTeams.initialize();
+
+      const params = new URLSearchParams(window.location.search);
+      const sysId = params.get('sys_id');
+      if (!sysId) {
+        document.getElementById('loading').innerText = "Error: no incident id.";
+        console.error("sys_id parameter missing");
+        return;
+      }
+
+      // Get Azure AD token silently
+      microsoftTeams.authentication.getAuthToken({
+        successCallback: async (aadToken) => {
+          try {
+            const res = await fetch(`/api/incident?sys_id=${sysId}`, {
+              headers: { 'Authorization': `Bearer ${aadToken}` }
+            });
+            if (!res.ok) throw new Error("Incident fetch failed: " + res.status);
+            const data = await res.json();
+
+            document.getElementById('number').value = data.result.number || "";
+            document.getElementById('short_description').value = data.result.short_description || "";
+            document.getElementById('state').value = data.result.state || "";
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('incidentForm').style.display = 'block';
+          } catch (err) {
+            console.error("Fetch error:", err);
+            document.getElementById('loading').innerText = "Unable to load incident.";
+          }
+        },
+        failureCallback: (error) => {
+          console.error("Token error:", error);
+          document.getElementById('loading').innerText = "Authentication error or consent required.";
+        }
+      });
+
+      // Save button handler
+      document.getElementById('saveBtn').onclick = async () => {
+        const resultDiv = document.getElementById('result');
+        resultDiv.innerText = "Saving...";
+        resultDiv.classList.remove('error');
+
+        const updated = {
+          sys_id: sysId,
+          short_description: document.getElementById('short_description').value,
+          state: document.getElementById('state').value
+        };
+
+        try {
+          const aadToken = await new Promise((resolve, reject) =>
+            microsoftTeams.authentication.getAuthToken({
+              successCallback: resolve,
+              failureCallback: reject
+            })
+          );
+
+          const resp = await fetch('/api/incident', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${aadToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updated)
+          });
+
+          if (!resp.ok) throw new Error("Update failed: " + resp.status);
+          resultDiv.innerText = "✅ Incident updated successfully.";
+        } catch (err) {
+          console.error("Save error:", err);
+          resultDiv.classList.add('error');
+          resultDiv.innerText = "Failed to update incident.";
+        }
+      };
+    });
   </script>
 </body>
+</html>
