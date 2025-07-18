@@ -1,0 +1,14 @@
+{
+  "navigationFallback": {
+    "rewrite": "index.html",
+    "exclude": ["/api/*"]
+  },
+  "responseOverrides": {
+    "404": {
+      "rewrite": "/index.html"
+    }
+  },
+  "globalHeaders": {
+    "Content-Security-Policy": "script-src 'self' https://statics.teams.cdn.office.net"
+  }
+}
