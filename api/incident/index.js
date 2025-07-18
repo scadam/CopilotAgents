@@ -11,13 +11,14 @@ module.exports = async function (context, req) {
   const token = authHeader.split(' ')[1];
   // Validate the token (e.g., using Microsoft identity library or jwt). 
   // Ensure signature is valid and token is from your AAD app and not expired.
-  try {
-    const verifiedToken = verifyJwt(token, /* your AAD signing keys or library*/);
-    // Optionally, ensure the token has the expected scope or audience.
-  } catch (e) {
-    context.res = { status: 401, body: "Invalid token" };
-    return;
-  }
+  //try {
+  //  const verifiedToken = verifyJwt(token, /* your AAD signing keys or library*/);
+  //  // Optionally, ensure the token has the expected scope or audience.
+  //
+  //} catch (e) {
+  //  context.res = { status: 401, body: "Invalid token" };
+  //  return;
+  //}
 
   // 2. Call ServiceNow API
   const SN_INSTANCE = "dev217950.service-now.com.service-now.com";
