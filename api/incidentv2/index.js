@@ -23,7 +23,7 @@ module.exports = async function (context, req) {
             number: "INC9999999",
             short_description: "Mock incident loaded successfully",
             state: "In Progress",
-            sys_id
+            sysId
           }
         }
       };
