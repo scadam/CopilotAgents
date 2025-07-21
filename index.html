@@ -1,30 +1,89 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>ServiceNow Incident Editor</title>
+  <title>Edit Incident</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://statics.teams.cdn.office.net/sdk/v1.11.0/js/MicrosoftTeams.min.js"></script>
   <script src="scripts/app.js" defer></script>
   <style>
-    body { font-family: sans-serif; margin: 20px; }
-    h2 { color: #0078D4; }
-    label { font-weight: bold; display: block; margin: 10px 0 5px; }
-    input, textarea { width: 100%; padding: 6px; }
-    button { margin-top: 10px; padding: 8px 12px; }
-    #loading { color: gray; font-style: italic; }
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      background: #fff;
+      padding: 25px;
+      max-width: 700px;
+      margin: auto;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h2 { margin-top: 0; color: #0078D4; }
+    label { margin-top: 15px; display: block; font-weight: bold; }
+    input, textarea, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      box-sizing: border-box;
+      font-size: 14px;
+    }
+    button {
+      margin-top: 20px;
+      background: #0078D4;
+      color: #fff;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover { background: #005a9e; }
+    #loading { color: #555; font-style: italic; }
     #result { margin-top: 15px; font-weight: bold; }
     #result.error { color: red; }
   </style>
 </head>
 <body>
-  <h2>Edit ServiceNow Incident</h2>
-  <div id="loading">Loading incident details...</div>
-  <form id="incidentForm" style="display:none">
-    <label>Number: <input id="number" type="text" disabled /></label>
-    <label>Short Description: <textarea id="short_description"></textarea></label>
-    <label>State: <input id="state" type="text" /></label>
-    <button type="button" id="saveBtn">💾 Save Changes</button>
-  </form>
-  <div id="result"></div>
+  <div class="container">
+    <h2>Edit ServiceNow Incident</h2>
+    <div id="loading">Loading incident...</div>
+    <form id="incidentForm" style="display:none">
+      <label for="number">Number:</label>
+      <input id="number" type="text" disabled />
+
+      <label for="short_description">Short Description:</label>
+      <textarea id="short_description" rows="3"></textarea>
+
+      <label for="state">State:</label>
+      <select id="state">
+        <option value="1">New</option>
+        <option value="2">In Progress</option>
+        <option value="3">On Hold</option>
+        <option value="6">Resolved</option>
+        <option value="7">Closed</option>
+      </select>
+
+      <label for="urgency">Urgency:</label>
+      <select id="urgency">
+        <option value="1">High</option>
+        <option value="2">Medium</option>
+        <option value="3">Low</option>
+      </select>
+
+      <label for="caller_id">Caller:</label>
+      <select id="caller_id"></select>
+
+      <label for="opened_at">Opened At:</label>
+      <input id="opened_at" type="datetime-local" />
+
+      <label for="closed_at">Closed At:</label>
+      <input id="closed_at" type="datetime-local" />
+
+      <button type="button" id="saveBtn">💾 Save Incident</button>
+    </form>
+    <div id="result"></div>
+  </div>
 </body>
 </html>

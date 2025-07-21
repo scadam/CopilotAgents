@@ -1,78 +1,108 @@
 document.addEventListener("DOMContentLoaded", () => {
-  if (typeof microsoftTeams === "undefined") {
-    document.getElementById("loading").innerText = "Error: Teams SDK not loaded.";
-    return;
-  }
+  microsoftTeams?.initialize();
 
-  microsoftTeams.initialize();
-
-  const params = new URLSearchParams(window.location.search);
-  const sysId = params.get("sys_id");
+  const sysId = new URLSearchParams(window.location.search).get("sys_id");
+  const get = id => document.getElementById(id);
   if (!sysId) {
-    document.getElementById("loading").innerText = "Error: no incident id.";
+    get("loading").innerText = "Error: No incident ID provided.";
     return;
   }
 
-  // Fetch incident details
-  microsoftTeams.authentication.getAuthToken({
-    successCallback: async (aadToken) => {
-      try {
-        const res = await fetch(`/api/incidentv2?sys_id=${sysId}`, {
-          headers: { Authorization: `Bearer ${aadToken}` }
-        });
-        if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
-        const data = await res.json();
-        document.getElementById("number").value = data.result.number || "";
-        document.getElementById("short_description").value = data.result.short_description || "";
-        document.getElementById("state").value = data.result.state || "";
-        document.getElementById("loading").style.display = "none";
-        document.getElementById("incidentForm").style.display = "block";
-      } catch (err) {
-        console.error("Error loading incident:", err);
-        document.getElementById("loading").innerText = "Unable to load incident.";
-      }
-    },
-    failureCallback: (error) => {
-      console.error("Token error:", error);
-      document.getElementById("loading").innerText = "Authentication error or consent required.";
-    }
+  const tokenPromise = new Promise((resolve, reject) => {
+    microsoftTeams.authentication.getAuthToken({
+      successCallback: resolve,
+      failureCallback: reject
+    });
   });
 
-  // Save changes handler
-  document.getElementById("saveBtn").onclick = async () => {
-    const resultDiv = document.getElementById("result");
+  tokenPromise.then(async aadToken => {
+    try {
+      const incidentRes = await fetch(`/api/incidentv2?sys_id=${sysId}`, {
+        headers: { Authorization: `Bearer ${aadToken}` }
+      });
+      const incident = await incidentRes.json();
+      const i = incident.result;
+
+      get("number").value = i.number || "";
+      get("short_description").value = i.short_description || "";
+      get("urgency").value = i.urgency || "3";
+      get("state").value = i.state || "1";
+      get("opened_at").value = formatDate(i.opened_at);
+      get("closed_at").value = formatDate(i.closed_at);
+
+      await loadCallers(aadToken, i.caller_id?.value);
+
+      get("loading").style.display = "none";
+      get("incidentForm").style.display = "block";
+    } catch (err) {
+      console.error("Fetch failed:", err);
+      get("loading").innerText = "Unable to load incident.";
+    }
+  }).catch(err => {
+    console.error("Auth error:", err);
+    get("loading").innerText = "Authentication error.";
+  });
+
+  async function loadCallers(aadToken, selectedId) {
+    try {
+      const res = await fetch("/api/sys_users", {
+        headers: { Authorization: `Bearer ${aadToken}` }
+      });
+      const data = await res.json();
+      const caller = get("caller_id");
+      caller.innerHTML = "";
+
+      data.result.forEach(user => {
+        const opt = document.createElement("option");
+        opt.value = user.sys_id;
+        opt.textContent = user.name;
+        if (user.sys_id === selectedId) opt.selected = true;
+        caller.appendChild(opt);
+      });
+    } catch (err) {
+      console.error("Caller load failed:", err);
+      get("caller_id").innerHTML = "<option>Error loading callers</option>";
+    }
+  }
+
+  function formatDate(str) {
+    if (!str) return "";
+    const dt = new Date(str);
+    return dt.toISOString().slice(0, 16);
+  }
+
+  get("saveBtn").onclick = async () => {
+    const resultDiv = get("result");
     resultDiv.innerText = "Saving...";
     resultDiv.classList.remove("error");
 
-    const updated = {
+    const payload = {
       sys_id: sysId,
-      short_description: document.getElementById("short_description").value,
-      state: document.getElementById("state").value
+      short_description: get("short_description").value,
+      caller_id: get("caller_id").value,
+      urgency: get("urgency").value,
+      state: get("state").value,
+      opened_at: get("opened_at").value,
+      closed_at: get("closed_at").value
     };
 
     try {
-      const aadToken = await new Promise((resolve, reject) =>
-        microsoftTeams.authentication.getAuthToken({
-          successCallback: resolve,
-          failureCallback: reject
-        })
-      );
-
+      const aadToken = await tokenPromise;
       const resp = await fetch("/api/incidentv2", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${aadToken}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(updated)
+        body: JSON.stringify(payload)
       });
 
-      if (!resp.ok) throw new Error(`Update failed: ${resp.status}`);
+      if (!resp.ok) throw new Error(`Status ${resp.status}`);
       resultDiv.innerText = "✅ Incident updated successfully.";
     } catch (err) {
       console.error("Save error:", err);
       resultDiv.classList.add("error");
-      resultDiv.innerText = "Failed to update incident.";
+      resultDiv.innerText = "Update failed.";
     }
   };
 });
