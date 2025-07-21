@@ -4,12 +4,12 @@ module.exports = async function (context, req) {
   context.log("Incidentv2 function triggered");
 
   try {
-    // 🔍 Step 1: Extract sys_id
+    // 🧠 Step 1: Resolve sys_id
     const sysId = req.query.sys_id || (req.body && req.body.sys_id);
     context.log("Resolved sysId:", sysId);
 
     if (!sysId) {
-      context.log("sys_id missing from request");
+      context.log("Missing sys_id — aborting");
       context.res = {
         status: 400,
         body: { error: "Missing sys_id parameter" }
@@ -17,38 +17,57 @@ module.exports = async function (context, req) {
       return;
     }
 
-    // 🔐 Step 2: Request OAuth token from ServiceNow
-    context.log("Starting OAuth token request...");
-    const params = new URLSearchParams();
-    params.append("grant_type", "password");
-    params.append("client_id", "ca92cca4c5ca22100ba4fd7a16004118");
-    params.append("client_secret", "winn1e2025");
-    params.append("username", "admin");
-    params.append("password", "mIEh6jpTT9*=");
+    // 🔐 Step 2: Prepare OAuth token request
+    context.log("Preparing OAuth token request…");
 
-    const tokenRes = await fetch("https://dev217950.service-now.com/oauth_token.do", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
-      },
-      body: params
-    });
+    const clientId = "ca92cca4c5ca22100ba4fd7a16004118";
+    const clientSecret = "winn1e2025";
+    const username = "admin";
+    const password = "mIEh6jpTT9*=";
+    const tokenUrl = "https://dev217950.service-now.com/oauth_token.do";
 
-    context.log("OAuth response status:", tokenRes.status);
+    const tokenBody = new URLSearchParams();
+    tokenBody.append("grant_type", "password");
+    tokenBody.append("client_id", clientId);
+    tokenBody.append("client_secret", clientSecret);
+    tokenBody.append("username", username);
+    tokenBody.append("password", password);
 
-    const rawToken = await tokenRes.text();
-    context.log("Raw OAuth response body:", rawToken);
+    context.log("Token POST body prepared");
+
+    let tokenRes;
+    try {
+      tokenRes = await fetch(tokenUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: tokenBody
+      });
+    } catch (fetchErr) {
+      context.log.error("OAuth token fetch threw:", fetchErr);
+      context.res = {
+        status: 500,
+        body: {
+          error: "OAuth token request failed",
+          detail: fetchErr.message
+        }
+      };
+      return;
+    }
+
+    context.log("OAuth token response status:", tokenRes.status);
+    const tokenText = await tokenRes.text();
+    context.log("Raw token response:", tokenText);
 
     let tokenData;
     try {
-      tokenData = JSON.parse(rawToken);
-    } catch (err) {
-      context.log.error("Failed to parse OAuth token:", err);
+      tokenData = JSON.parse(tokenText);
+    } catch (parseErr) {
+      context.log.error("Token JSON parse error:", parseErr);
       context.res = {
         status: 500,
         body: {
           error: "OAuth token parse error",
-          detail: rawToken
+          detail: tokenText
         }
       };
       return;
@@ -56,25 +75,25 @@ module.exports = async function (context, req) {
 
     const token = tokenData.access_token;
     if (!token) {
-      context.log.error("No access_token found in OAuth response");
+      context.log.error("No access_token found:", tokenData);
       context.res = {
         status: 500,
         body: {
-          error: "Token retrieval failed",
+          error: "Token missing in response",
           detail: tokenData
         }
       };
       return;
     }
 
-    context.log("Token acquired successfully");
+    context.log("Token acquired:", token);
 
-    // 🎯 Step 3: Build ServiceNow API request
-    const SN_TABLE_API = `https://dev217950.service-now.com/api/now/table/incident/${sysId}`;
+    // 🎯 Step 3: Build ServiceNow API endpoint
+    const apiUrl = `https://dev217950.service-now.com/api/now/table/incident/${sysId}`;
 
     if (req.method === "GET") {
-      context.log("Starting GET request to ServiceNow...");
-      const response = await fetch(SN_TABLE_API, {
+      context.log("Performing GET to:", apiUrl);
+      const response = await fetch(apiUrl, {
         method: "GET",
         headers: {
           Accept: "application/json",
@@ -82,18 +101,18 @@ module.exports = async function (context, req) {
         }
       });
 
-      context.log("ServiceNow GET response status:", response.status);
-      const rawBody = await response.text();
-      context.log("Raw GET response:", rawBody);
+      const raw = await response.text();
+      context.log("GET response status:", response.status);
+      context.log("GET response body:", raw);
 
       let parsed;
       try {
-        parsed = JSON.parse(rawBody);
+        parsed = JSON.parse(raw);
       } catch (err) {
-        context.log.error("Failed to parse ServiceNow GET response:", err);
+        context.log.error("GET parse error:", err);
         context.res = {
           status: 500,
-          body: { error: "ServiceNow GET parse error", detail: rawBody }
+          body: { error: "ServiceNow GET parse failure", detail: raw }
         };
         return;
       }
@@ -104,12 +123,13 @@ module.exports = async function (context, req) {
       };
 
     } else if (req.method === "POST") {
-      context.log("Starting PATCH update to ServiceNow...");
+      context.log("Performing PATCH to:", apiUrl);
+
       const payload = { ...req.body };
       delete payload.sys_id;
-      context.log("Patch payload:", payload);
+      context.log("PATCH payload:", payload);
 
-      const response = await fetch(SN_TABLE_API, {
+      const response = await fetch(apiUrl, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -119,18 +139,18 @@ module.exports = async function (context, req) {
         body: JSON.stringify(payload)
       });
 
-      context.log("ServiceNow PATCH response status:", response.status);
-      const rawBody = await response.text();
-      context.log("Raw PATCH response:", rawBody);
+      const raw = await response.text();
+      context.log("PATCH response status:", response.status);
+      context.log("PATCH response body:", raw);
 
       let parsed;
       try {
-        parsed = JSON.parse(rawBody);
+        parsed = JSON.parse(raw);
       } catch (err) {
-        context.log.error("Failed to parse ServiceNow PATCH response:", err);
+        context.log.error("PATCH parse error:", err);
         context.res = {
           status: 500,
-          body: { error: "ServiceNow PATCH parse error", detail: rawBody }
+          body: { error: "ServiceNow PATCH parse failure", detail: raw }
         };
         return;
       }
@@ -149,7 +169,7 @@ module.exports = async function (context, req) {
     }
 
   } catch (err) {
-    context.log.error("Unhandled exception in incidentv2 function:", err);
+    context.log.error("Unhandled exception in incidentv2:", err);
     context.res = {
       status: 500,
       body: {
