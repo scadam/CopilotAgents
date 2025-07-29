@@ -1,7 +1,7 @@
 const fetch = require("node-fetch");
 
 module.exports = async function (context, req) {
-  context.log("Incidentv2 function triggered");
+  context.log("incidentv3 function triggered");
 
   try {
     // 🧠 Step 1: Resolve sys_id
@@ -169,7 +169,7 @@ module.exports = async function (context, req) {
     }
 
   } catch (err) {
-    context.log.error("Unhandled exception in incidentv2:", err);
+    context.log.error("Unhandled exception in incidentv3:", err);
     context.res = {
       status: 500,
       body: {

@@ -18,7 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
   tokenPromise.then(async aadToken => {
     try {
       get("loading").innerText = "Fetching the requested incident...";
-      const incidentRes = await fetch(`/api/incidentv2?sys_id=${sysId}`, {
+      const incidentRes = await fetch(`/api/incidentv3?sys_id=${sysId}`, {
         headers: { Authorization: `Bearer ${aadToken}` }
       });
       const incident = await incidentRes.json();
@@ -89,7 +89,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       const aadToken = await tokenPromise;
-      const resp = await fetch("/api/incidentv2", {
+      const resp = await fetch("/api/incidentv3", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${aadToken}`,
